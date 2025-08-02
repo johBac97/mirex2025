@@ -72,7 +72,6 @@ mirex_custom = Mirex2025Tokenizer()
 rt = remi.encode(file_path)
 mc = mirex_custom.encode(file_path)
 
-
 print(f"REMI Tokenization:\t{rt[0].tokens}")
 print("\n\n------------------\n\n")
 print(f"Mirex 2025 Custom Tokenization:\t{mc[0].tokens}")
