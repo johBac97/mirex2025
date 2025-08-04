@@ -1,0 +1,71 @@
+import json
+import transformers
+from mirex_dataset import MIREXCustomDataset
+import miditok
+from pathlib import Path
+
+import argparse
+
+
+def __parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--train-config", type=Path)
+    parser.add_argument("--model", type=str)
+    parser.add_argument("--train-data", type=Path)
+    parser.add_argument("--val-data", type=Path)
+
+    return parser.parse_args()
+
+
+def main():
+    args = __parse_args()
+
+    if args.train_config:
+        with args.config.open() as io:
+            train_config = json.load(io)
+    else:
+        train_config = {}
+
+    config = miditok.TokenizerConfig(
+        pitch_range=(0, 127), use_velocities=False, encode_ids_splits="no"
+    )
+
+    tokenizer = miditok.REMI(config)
+
+    train_data = MIREXCustomDataset(args.train_data, tokenizer=tokenizer)
+    val_data = MIREXCustomDataset(args.val_data, tokenizer=tokenizer)
+
+    model_config = transformers.AutoConfig.from_pretrained(args.model)
+    model_config.vocab_size = tokenizer.vocab_size + 1
+
+    model = transformers.AutoModelForCausalLM.from_config(model_config)
+    model.resize_token_embeddings(tokenizer.vocab_size + 1)
+
+    """
+    data_collator = transformers.DataCollatorWithPadding(
+        tokenizer=remi, padding="longest"
+    )
+    """
+
+    data_collator = miditok.pytorch_data.DataCollator(tokenizer.pad_token_id)
+
+    train_args = transformers.TrainingArguments(**train_config)
+
+    trainer = transformers.Trainer(
+        model=model,
+        args=train_args,
+        train_dataset=train_data,
+        eval_dataset=val_data,
+        data_collator=data_collator,
+    )
+
+    import pdb
+
+    pdb.set_trace()
+
+    trainer.train()
+
+
+if __name__ == "__main__":
+    main()
