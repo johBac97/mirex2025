@@ -43,7 +43,7 @@ class Mirex2025Tokenizer(miditok.MusicTokenizer):
         return graph
 
     def _add_time_events(self, events, time_division: int):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def _create_base_vocabulary(self):
         vocab = []
@@ -73,5 +73,7 @@ rt = remi.encode(file_path)
 mc = mirex_custom.encode(file_path)
 
 print(f"REMI Tokenization:\t{rt[0].tokens}")
+print(f"Number REMI tokens:\t{len(rt[0].tokens)}")
 print("\n\n------------------\n\n")
 print(f"Mirex 2025 Custom Tokenization:\t{mc[0].tokens}")
+print(f"Number Mirex 2025 Custom tokens:\t{len(mc[0].tokens)}")
