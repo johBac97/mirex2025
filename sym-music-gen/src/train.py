@@ -10,9 +10,11 @@ import torch
 
 torch.set_float32_matmul_precision("medium")
 
+
 class DebugCallback(transformers.TrainerCallback):
-    def on_step_begin(self, args, state, control,**kwargs):
+    def on_step_begin(self, args, state, control, **kwargs):
         import pdb
+
         pdb.set_trace()
 
 
@@ -44,11 +46,14 @@ def main():
 
     train_data = MIREXCustomDataset(args.train_data, tokenizer=tokenizer)
     val_data = MIREXCustomDataset(args.val_data, tokenizer=tokenizer)
+    val_data = torch.utils.data.Subset(val_data, range(1000))
 
     model_config = transformers.AutoConfig.from_pretrained(args.model)
     model_config.vocab_size = tokenizer.vocab_size
 
-    model = transformers.AutoModelForCausalLM.from_config(model_config)
+    model = transformers.AutoModelForCausalLM.from_config(
+        model_config, trust_remote_code=True
+    )
     model.resize_token_embeddings(tokenizer.vocab_size)
 
     data_collator = miditok.pytorch_data.DataCollator(tokenizer.pad_token_id)
@@ -61,7 +66,7 @@ def main():
         train_dataset=train_data,
         eval_dataset=val_data,
         data_collator=data_collator,
-        #callbacks=[DebugCallback()]
+        # callbacks=[DebugCallback()]
     )
 
     trainer.train()
