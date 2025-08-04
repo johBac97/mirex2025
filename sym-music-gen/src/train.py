@@ -39,14 +39,17 @@ def main():
         train_config = {}
 
     config = miditok.TokenizerConfig(
-        pitch_range=(0, 127), use_velocities=False, encode_ids_splits="no"
+        pitch_range=(0, 127),
+        use_velocities=False,
+        encode_ids_splits="no",
+        use_pitchdrum_tokens=False,
     )
 
     tokenizer = miditok.REMI(config)
 
     train_data = MIREXCustomDataset(args.train_data, tokenizer=tokenizer)
     val_data = MIREXCustomDataset(args.val_data, tokenizer=tokenizer)
-    val_data = torch.utils.data.Subset(val_data, range(1000))
+    val_data = torch.utils.data.Subset(val_data, range(4000))
 
     model_config = transformers.AutoConfig.from_pretrained(args.model)
     model_config.vocab_size = tokenizer.vocab_size
