@@ -6,6 +6,15 @@ from pathlib import Path
 
 import argparse
 
+import torch
+
+torch.set_float32_matmul_precision("medium")
+
+class DebugCallback(transformers.TrainerCallback):
+    def on_step_begin(self, args, state, control,**kwargs):
+        import pdb
+        pdb.set_trace()
+
 
 def __parse_args():
     parser = argparse.ArgumentParser()
@@ -22,7 +31,7 @@ def main():
     args = __parse_args()
 
     if args.train_config:
-        with args.config.open() as io:
+        with args.train_config.open() as io:
             train_config = json.load(io)
     else:
         train_config = {}
@@ -37,16 +46,10 @@ def main():
     val_data = MIREXCustomDataset(args.val_data, tokenizer=tokenizer)
 
     model_config = transformers.AutoConfig.from_pretrained(args.model)
-    model_config.vocab_size = tokenizer.vocab_size + 1
+    model_config.vocab_size = tokenizer.vocab_size
 
     model = transformers.AutoModelForCausalLM.from_config(model_config)
-    model.resize_token_embeddings(tokenizer.vocab_size + 1)
-
-    """
-    data_collator = transformers.DataCollatorWithPadding(
-        tokenizer=remi, padding="longest"
-    )
-    """
+    model.resize_token_embeddings(tokenizer.vocab_size)
 
     data_collator = miditok.pytorch_data.DataCollator(tokenizer.pad_token_id)
 
@@ -58,11 +61,8 @@ def main():
         train_dataset=train_data,
         eval_dataset=val_data,
         data_collator=data_collator,
+        #callbacks=[DebugCallback()]
     )
-
-    import pdb
-
-    pdb.set_trace()
 
     trainer.train()
 

@@ -37,7 +37,7 @@ class MIREXCustomDataset(torch.utils.data.Dataset):
         sample = token_ids[sample_start:sample_end]
 
         input_ids = torch.from_numpy(sample)
-        attention_mask = torch.ones_like(input_ids)
+        attention_mask = torch.ones_like(input_ids, dtype=input_ids.dtype)
 
         labels = input_ids.clone()
 
@@ -48,9 +48,8 @@ class MIREXCustomDataset(torch.utils.data.Dataset):
 
         labels[0:index_start_completion] = -100
 
-        print(f"MAx:\t{input_ids.max()}")
         return {
             "input_ids": input_ids,
-            # "attention_mask": attention_mask,
+            "attention_mask": attention_mask,
             "labels": labels,
         }
