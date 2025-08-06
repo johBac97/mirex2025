@@ -25,10 +25,11 @@ def notes_to_score(notes):
     track = symusic.Track(ttype=symusic.TimeUnit.quarter)
 
     for n in notes:
+        # In symusic the note duration is specified in quarters. 
+        # In the MIREX prompt it is specified in sixteenth notes
         note = symusic.Note(
             time=n["start"] / 4,
-            duration=n["duration"]
-            / 4,  # The note duration is given as fraction of a quarter
+            duration=n["duration"] / 4,
             pitch=n["pitch"],
             velocity=90,
             ttype=symusic.TimeUnit.quarter,
@@ -68,7 +69,7 @@ def main():
                 prompt_tokens_pt,
                 attention_mask=attention_mask,
                 max_new_tokens=200,
-                temperature=0.5,
+                temperature=0.4,
                 do_sample=True,
             )
         full_score = tokenizer.decode(output)
