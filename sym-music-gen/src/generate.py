@@ -1,4 +1,5 @@
 import argparse
+import tqdm
 import torch
 import symusic
 import miditok
@@ -13,6 +14,7 @@ def __parse_args():
 
     parser.add_argument("model", type=Path)
     parser.add_argument("prompt", type=Path)
+    parser.add_argument("--num-generations", type=int, default=4)
 
     return parser.parse_args()
 
@@ -57,13 +59,21 @@ def main():
     prompt_tokens_pt = torch.tensor(prompt_tokens).unsqueeze(0)
     attention_mask = torch.ones_like(prompt_tokens_pt)
 
-    with torch.no_grad():
-        output = model.generate(
-            prompt_tokens_pt, attention_mask=attention_mask, max_length=200
-        )
-    full_score = tokenizer.decode(output)
+    output_dir = Path(f"{args.prompt.stem}_generations")
+    output_dir.mkdir(exist_ok=True)
 
-    full_score.dump_midi(f"{args.prompt.stem}_generation.mid")
+    for n in tqdm.tqdm(range(1, args.num_generations + 1)):
+        with torch.no_grad():
+            output = model.generate(
+                prompt_tokens_pt,
+                attention_mask=attention_mask,
+                max_new_tokens=200,
+                temperature=0.5,
+                do_sample=True,
+            )
+        full_score = tokenizer.decode(output)
+
+        full_score.dump_midi(str(output_dir / f"sample_{n:02d}.mid"))
 
 
 if __name__ == "__main__":
