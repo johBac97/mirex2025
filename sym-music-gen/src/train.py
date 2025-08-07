@@ -72,7 +72,17 @@ def main():
         # callbacks=[DebugCallback()]
     )
 
-    trainer.train()
+    last_checkpoint = None
+    if Path(train_config["output_dir"]).exists():
+        last_checkpoint = transformers.trainer_utils.get_last_checkpoint(
+            train_config["output_dir"]
+        )
+
+    if last_checkpoint:
+        print(f"Resuming from:\t{last_checkpoint}")
+        trainer.train(resume_from_checkpoint=last_checkpoint)
+    else:
+        trainer.train()
 
 
 if __name__ == "__main__":
