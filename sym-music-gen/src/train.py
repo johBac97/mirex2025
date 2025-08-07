@@ -51,13 +51,22 @@ def main():
     val_data = MIREXCustomDataset(args.val_data, tokenizer=tokenizer)
     val_data = torch.utils.data.Subset(val_data, range(4000))
 
-    model_config = transformers.AutoConfig.from_pretrained(args.model)
-    model_config.vocab_size = tokenizer.vocab_size
+    model_config = transformers.AutoConfig.from_pretrained(
+        args.model,
+        vocab_size=tokenizer.vocab_size,
+        hidden_size=512,
+        intermediate_size=1376,
+        num_hidden_layers=8,
+        num_attention_heads=8,
+    )
 
     model = transformers.AutoModelForCausalLM.from_config(
         model_config, trust_remote_code=True
     )
     model.resize_token_embeddings(tokenizer.vocab_size)
+
+    num_parameters = sum([x.numel() for x in model.parameters()])
+    print(f"Model Parameters:\t{num_parameters / 1e6}")
 
     data_collator = miditok.pytorch_data.DataCollator(tokenizer.pad_token_id)
 
