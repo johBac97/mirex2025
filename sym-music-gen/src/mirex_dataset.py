@@ -1,10 +1,14 @@
 from pathlib import Path
 import numpy as np
 import torch
+import miditok
+import symusic
 
 
 class MIREXCustomDataset(torch.utils.data.Dataset):
-    def __init__(self, midi_files: Path | list[Path], tokenizer):
+    def __init__(
+        self, midi_files: Path | list[Path], tokenizer, max_pitch_offset: int = 0
+    ):
         super().__init__()
         self._midi_files = (
             midi_files
@@ -15,7 +19,8 @@ class MIREXCustomDataset(torch.utils.data.Dataset):
         self._tokenizer = tokenizer
 
         self._num_prompt_measures = 4
-        self._num_completion_measures = 12
+        self._num_completion_measures = 4
+        self._max_pitch_offset = max_pitch_offset
 
     def __len__(self):
         return len(self._midi_files)
@@ -23,7 +28,21 @@ class MIREXCustomDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx: int):
         file_path = self._midi_files[idx]
 
-        encoding = self._tokenizer.encode(file_path)[0]
+        score = symusic.Score(file_path)
+
+        if self._max_pitch_offset > 0:
+            # Get max and min pitch to make sure the augmentation method doesn't crash
+            max_pitch = max(x.pitch for x in score.tracks[0].notes)
+            min_pitch = min(x.pitch for x in score.tracks[0].notes)
+            min_augment_pitch = max(0, min_pitch - self._max_pitch_offset) - min_pitch
+            max_augment_pitch = min(127, max_pitch + self._max_pitch_offset) - max_pitch
+            pitch_augmentation = np.random.randint(min_augment_pitch, max_augment_pitch)
+
+            score = miditok.data_augmentation.augment_score(
+                score, pitch_offset=pitch_augmentation
+            )
+
+        encoding = self._tokenizer.encode(score)[0]
 
         token_ids = np.array(encoding.ids)
 

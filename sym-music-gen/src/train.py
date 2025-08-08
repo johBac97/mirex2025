@@ -47,9 +47,19 @@ def main():
 
     tokenizer = miditok.REMI(config)
 
-    train_data = MIREXCustomDataset(args.train_data, tokenizer=tokenizer)
-    val_data = MIREXCustomDataset(args.val_data, tokenizer=tokenizer)
-    val_data = torch.utils.data.Subset(val_data, range(4000))
+    train_data = MIREXCustomDataset(
+        args.train_data, tokenizer=tokenizer, max_pitch_offset=6
+    )
+    if args.val_data:
+        val_data = MIREXCustomDataset(args.val_data, tokenizer=tokenizer)
+        val_data = torch.utils.data.Subset(val_data, range(4000))
+    else:
+        print("Running without validation data.")
+        val_data = None
+        keys = list(train_config.keys())
+        for k in keys:
+            if "eval" in k:
+                train_config.pop(k)
 
     model_config = transformers.AutoConfig.from_pretrained(
         args.model,
