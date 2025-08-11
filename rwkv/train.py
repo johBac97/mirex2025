@@ -12,10 +12,13 @@ if __name__ == "__main__":
     from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
     import pytorch_lightning as pl
 
+    from pathlib import Path
+
     rank_zero_info("########## work in progress ##########")
 
     parser = ArgumentParser()
 
+    parser.add_argument("--train_data", type=Path)
     parser.add_argument("--load_model", default="", type=str)  # full path, with .pth
     parser.add_argument(
         "--wandb", default="", type=str
@@ -302,11 +305,22 @@ if __name__ == "__main__":
     ########################################################################################################
 
     from src.trainer import train_callback, generate_init_weight
+    from src.mirex_dataset import MIREXCustomDataset
 
-    # TODO: plug in john's dataloader
-    from src.dataset import Dataset
+    config = miditok.TokenizerConfig(
+        pitch_range=(0, 127),
+        use_velocities=False,
+        encode_ids_splits="no",
+        use_pitchdrum_tokens=False,
+    )
 
-    train_data = Dataset()
+    tokenizer = miditok.REMI(config)
+
+    train_data = MIREXCustomDataset(
+        args.train_data,
+        tokenizer,
+        max_pitch_offset=6,
+    )
 
     args.vocab_size = 16000
 
