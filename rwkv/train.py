@@ -306,6 +306,7 @@ if __name__ == "__main__":
 
     from src.trainer import train_callback, generate_init_weight
     from src.mirex_dataset import MIREXCustomDataset
+    import miditok
 
     config = miditok.TokenizerConfig(
         pitch_range=(0, 127),
