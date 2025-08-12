@@ -14,6 +14,9 @@ if __name__ == "__main__":
 
     from pathlib import Path
 
+    from collator import make_collate_fn
+
+
     rank_zero_info("########## work in progress ##########")
 
     parser = ArgumentParser()
@@ -410,6 +413,20 @@ if __name__ == "__main__":
             args.ds_bucket_mb * 1000 * 1000
         )
 
+    pad_id = getattr(tokenizer, "pad_token_id", None)
+    if pad_id is None:
+        # miditok exposes PAD in vocab; fall back if needed
+        pad_id = tokenizer.vocab.get("PAD_None", 0)
+
+    max_16_bar_seq_len = 2695 # See find_longest_16_bar_window.py
+    # I hear rwkv expects a length which is a multiple of 16
+    pad_to_len = max_16_bar_seq_len + (16 - max_16_bar_seq_len % 16)
+
+    collate_fn = make_collate_fn(
+        pad_id,
+        return_mask=(args.my_qa_mask == 1),
+    )
+
     ds_num_workers = 8
 
     data_loader = DataLoader(
@@ -420,6 +437,7 @@ if __name__ == "__main__":
         num_workers=ds_num_workers,
         persistent_workers=False,
         drop_last=True,
+        collate_fn=collate_fn,
     )
 
     trainer.fit(model, data_loader)
