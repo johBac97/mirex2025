@@ -1,4 +1,4 @@
-sympy==1.12.1
+sympy==1.13.1
 torch
 torchvision
 pytorch-lightning==1.9.5
