@@ -69,7 +69,11 @@ if 'x070' in os.environ["RWKV_MY_TESTING"]:
             torch.ops.wind_backstepping.backward(w,q,k,v,z,b, dy,s,sa, dw,dq,dk,dv,dz,db)
             return dw,dq,dk,dv,dz,db
 
-    def RUN_CUDA_RWKV7g(q,w,k,v,a,b):
+    def RUN_CUDA_RWKV7g(q,w,k,v,a,b,
+                        # These args must be typed, so that the CUDA
+                        # compiler knows how to handle them.
+                        chunk_len: int=CHUNK_LEN, group: int=64,
+                        ):
         # shapes
         assert q.ndim == 3, f"Expected (B,T,HC), got {q.shape}"
         B, T, HC = q.shape
