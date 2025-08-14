@@ -311,11 +311,22 @@ if __name__ == "__main__":
     from src.mirex_dataset import MIREXCustomDataset
     import miditok
 
+    default_special_tokens = miditok.TokenizerConfig().special_tokens
+
+    extra_tokens = [    # Tokens used for RAG set-up
+        "RAG_SEP",      # Separates RAG entries preceding the prompt
+        "SIM_START",    # Indicates start of RAG entry which is similar to the prompt
+        "SIM_END",      # Indicates end of RAG entry which is similar to the prompt
+        "PROMPT_START", # Indicates start of prompt
+        "GEN_START",    # Indicates start of score to ideally be generated
+    ]
+
     config = miditok.TokenizerConfig(
         pitch_range=(0, 127),
         use_velocities=False,
         encode_ids_splits="no",
         use_pitchdrum_tokens=False,
+        special_tokens = default_special_tokens + extra_tokens,
     )
 
     tokenizer = miditok.REMI(config)
