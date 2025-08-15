@@ -49,6 +49,35 @@ class MIREXCustomDataset(torch.utils.data.Dataset):
         # Select random bar to start
         bar_starts = np.where(token_ids == self._tokenizer.vocab["Bar_None"])[0]
 
+        # 1. Take first four bars of the sample
+        # 2. Search for similar music to those four bars in the database
+
+        # 3. Return an augmented sample including either those entire
+        #    pieces, or just the 12-bar continuation, in the format
+
+        # The goal is to, given the 4-bar prompt P,
+
+        # 1. Search for snippets similar to the prompt in the [Aria
+        #    dataset](https://arxiv.org/abs/2504.15071), S1, ..., SN with
+        #    respective 12-bar continuations C1, ..., CN. This is the
+        #    point where the music database is necessary, to identify the
+        #    similar snippets.
+        
+        # 2. Provide the following augmented prompt to an LLM, which
+        #    will be trained on such prompts P with continuation C taken
+        #    from the Aria dataset:
+
+        #    S1ǁC1[RAG_SEP] ... [RAG_SEP]SNǁCN[PROMPT_START]P[GEN_START]C
+
+        #    (Here the continuation "C" is only included during training,
+        #    and next-token prediction is only done on "C". [RAG_SEP],
+        #    [PROMPT_START] and [GEN_START] are special tokens. During
+        #    inference, the sequence is
+             
+        #    S1ǁC1[RAG_SEP] ... [RAG_SEP]SNǁCN[PROMPT_START]P[GEN_START]
+             
+        #    and C is the product of the inference.)
+
         selected_bar_start = np.random.randint(0, len(bar_starts) - 16)
         sample_start = bar_starts[selected_bar_start]
         sample_end = bar_starts[selected_bar_start + 16]
