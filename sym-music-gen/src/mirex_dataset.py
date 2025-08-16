@@ -77,11 +77,12 @@ class MIREXCustomDataset(torch.utils.data.Dataset):
 
 
 class MIREXPreprocessedDataset(torch.utils.data.Dataset):
-    def __init__(
-        self, dataset_path: Path, max_pitch_offset: int = 0, fixed: bool = False
-    ):
+    def __init__(self, dataset_path: Path, max_pitch_offset: int = 0):
         super().__init__()
         self._ds = datasets.load_from_disk(dataset_path)
+
+        if "train" in self._ds:
+            self._ds = self._ds["train"]
 
         self._ds.set_format("torch")
 
@@ -89,11 +90,8 @@ class MIREXPreprocessedDataset(torch.utils.data.Dataset):
             self._pitch_tokens = torch.tensor(json.load(io)["pitch_tokens"])
             self._pitch_token_offset = self._pitch_tokens[0]
 
-        self._num_prompt_measures = 4
-        self._num_completion_measures = 4
         self._max_pitch_offset = max_pitch_offset
-
-        self._fixed = fixed
+        self._num_prompt_bars = 4
 
     def __len__(self):
         return len(self._ds)
@@ -101,33 +99,7 @@ class MIREXPreprocessedDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx: int):
         sample = self._ds[idx]
 
-        if self._fixed:
-            selected_bar_start_index = 0
-        else:
-            selected_bar_start_index = torch.randint(
-                low=0,
-                high=sample["bar_start"].shape[-1]
-                - self._num_prompt_measures
-                + self._num_completion_measures,
-                size=(1,),
-            )
-
-        selected_bar_start = sample["bar_start"][selected_bar_start_index]
-
-        selected_bar_end = sample["bar_start"][
-            selected_bar_start_index
-            + self._num_prompt_measures
-            + self._num_completion_measures
-        ]
-
-        # Index of the end of the prompt (in extracted coordinates and not global)
-        prompt_bar_end = (
-            sample["bar_start"][selected_bar_start_index + self._num_prompt_measures]
-            - selected_bar_start
-        )
-
-        # TODO extend so that it works for RWKV as well. I.e, pad to 16
-        input_ids = sample["tokens"][selected_bar_start:selected_bar_end]
+        input_ids = torch.as_tensor(sample["tokens"], dtype=torch.long)
 
         if self._max_pitch_offset > 0:
             pitch_tokens = torch.isin(input_ids, self._pitch_tokens)
@@ -148,6 +120,7 @@ class MIREXPreprocessedDataset(torch.utils.data.Dataset):
         attention_mask = torch.ones_like(input_ids, dtype=input_ids.dtype)
         labels = input_ids.clone()
 
+        prompt_bar_end = sample["bar_starts"][self._num_prompt_bars]
         labels[0:prompt_bar_end] = -100
 
         return {
