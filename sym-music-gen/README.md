@@ -2,6 +2,32 @@
 
 Repo for developing a model for the MIREX 2025 symbolic music generation competition.
 
+# Instructions for generating MIREX 2025 Submission
+
+## 1. Install uv
+
+On linux/mac run the following command
+
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+If `curl` is unavailable run, 
+
+```
+wget -qO- https://astral.sh/uv/install.sh | sh
+```
+
+## 2. Retrieve model weights 
+
+Get the model weights from..... (TO BE DECIDED).
+
+## 3. Run Generation
+
+```
+./generation.sh <INPUT-JSON-PROMPT> <GENERATIONS-OUTPUT> <NUMBER-GENERATIONS>
+```
+
 
 ## Installation 
 
@@ -42,7 +68,7 @@ where `<PATH-TO-TRAIN-CONFIG>` is a json file that will be passed to the `Traini
 To create completions from a prompt in json format run the following command,
 
 ```
-uv run src/generate.py <MODEL> <PROMPT> 
+uv run src/generate.py <MODEL> <PROMPT> --num-generations <NUMBER-GENERATIONS>
 ```
 
 Where the `<MODEL>` is the model checkpoint to use, loads both the model and the REMI tokenizer from this path, the `<PROMPT>` is the path to the song prompt in json format.

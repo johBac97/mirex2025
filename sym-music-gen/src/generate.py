@@ -5,6 +5,7 @@ import symusic
 import miditok
 import transformers
 import json
+from midi_to_prompt import midi_to_json
 
 from pathlib import Path
 
@@ -15,8 +16,19 @@ def __parse_args():
     parser.add_argument("model", type=Path)
     parser.add_argument("prompt", type=Path)
     parser.add_argument("--num-generations", type=int, default=4)
+    parser.add_argument("--output", type=Path, default=Path("generations"))
 
     return parser.parse_args()
+
+
+class BarStoppingCriteria(transformers.StoppingCriteria):
+    def __init__(self, num_bars: int, bar_delimiter_token_id: int):
+        super().__init__()
+        self._num_bars = num_bars
+        self._bar_delimiter_token_id = bar_delimiter_token_id
+
+    def __call__(self, input_ids: torch.Tensor, scores: torch.Tensor, **kwargs):
+        return (input_ids == self._bar_delimiter_token_id).sum(dim=1) >= self._num_bars
 
 
 def notes_to_score(notes):
@@ -25,7 +37,7 @@ def notes_to_score(notes):
     track = symusic.Track(ttype=symusic.TimeUnit.quarter)
 
     for n in notes:
-        # In symusic the note duration is specified in quarters. 
+        # In symusic the note duration is specified in quarters.
         # In the MIREX prompt it is specified in sixteenth notes
         note = symusic.Note(
             time=n["start"] / 4,
@@ -46,7 +58,7 @@ def notes_to_score(notes):
 def main():
     args = __parse_args()
 
-    model = transformers.AutoModelForCausalLM.from_pretrained(args.model).eval()
+    model = transformers.AutoModelForCausalLM.from_pretrained(args.model).eval().cuda()
 
     tokenizer = miditok.REMI.from_pretrained(args.model)
 
@@ -57,24 +69,42 @@ def main():
 
     prompt_tokens = tokenizer.encode(prompt_score)[0].ids
 
-    prompt_tokens_pt = torch.tensor(prompt_tokens).unsqueeze(0)
-    attention_mask = torch.ones_like(prompt_tokens_pt)
+    prompt_tokens_pt = torch.tensor(prompt_tokens).unsqueeze(0).cuda()
+    attention_mask = torch.ones_like(prompt_tokens_pt).cuda()
 
-    output_dir = Path(f"{args.prompt.stem}_generations")
+    output_dir = args.output
     output_dir.mkdir(exist_ok=True)
+    midi_dir = output_dir / "midi"
+    midi_dir.mkdir(exist_ok=True)
+    prompt_score.dump_midi(str(midi_dir / "prompt.mid"))
+
+    bar_stopping_criteria = BarStoppingCriteria(
+        num_bars=16, bar_delimiter_token_id=tokenizer.vocab["Bar_None"]
+    )
 
     for n in tqdm.tqdm(range(1, args.num_generations + 1)):
         with torch.no_grad():
             output = model.generate(
                 prompt_tokens_pt,
+                max_new_tokens=3000,
                 attention_mask=attention_mask,
-                max_new_tokens=200,
-                temperature=0.4,
+                stopping_criteria=[bar_stopping_criteria],
+                pad_token_id=tokenizer.vocab["PAD_None"],
+                temperature=1.5,
+                top_p=0.90,
                 do_sample=True,
+                num_beams=3,
+                repetition_penalty=0.5,
             )
-        full_score = tokenizer.decode(output)
+        full_score = tokenizer.decode(output.cpu())
 
-        full_score.dump_midi(str(output_dir / f"sample_{n:02d}.mid"))
+        midi_path = midi_dir / f"sample_{n:02d}.mid"
+        full_score.dump_midi(str(midi_path))
+
+        midi_to_json(midi_path, output_dir / midi_path.with_suffix(".json").name)
+
+    # For now, don't delete the generated midifiles as they might be intresting to listen to.
+    # shutil.rmtree(str(midi_dir))
 
 
 if __name__ == "__main__":
