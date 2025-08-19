@@ -5,6 +5,7 @@ import symusic
 import miditok
 import transformers
 import json
+from midi_to_prompt import midi_to_json
 
 from pathlib import Path
 
@@ -15,6 +16,7 @@ def __parse_args():
     parser.add_argument("model", type=Path)
     parser.add_argument("prompt", type=Path)
     parser.add_argument("--num-generations", type=int, default=4)
+    parser.add_argument("--output", type=Path, default=Path("generations"))
 
     return parser.parse_args()
 
@@ -53,9 +55,6 @@ def notes_to_score(notes):
     return score
 
 
-# def custom_decoding(model, prompt_tokens: torch.tensor, num_bars: int = 16,
-
-
 def main():
     args = __parse_args()
 
@@ -73,9 +72,11 @@ def main():
     prompt_tokens_pt = torch.tensor(prompt_tokens).unsqueeze(0).cuda()
     attention_mask = torch.ones_like(prompt_tokens_pt).cuda()
 
-    output_dir = Path(f"{args.prompt.stem}_generations")
+    output_dir = args.output
     output_dir.mkdir(exist_ok=True)
-    prompt_score.dump_midi(str(output_dir / "prompt.mid"))
+    midi_dir = output_dir / "midi"
+    midi_dir.mkdir(exist_ok=True)
+    prompt_score.dump_midi(str(midi_dir / "prompt.mid"))
 
     bar_stopping_criteria = BarStoppingCriteria(
         num_bars=16, bar_delimiter_token_id=tokenizer.vocab["Bar_None"]
@@ -97,7 +98,13 @@ def main():
             )
         full_score = tokenizer.decode(output.cpu())
 
-        full_score.dump_midi(str(output_dir / f"sample_{n:02d}.mid"))
+        midi_path = midi_dir / f"sample_{n:02d}.mid"
+        full_score.dump_midi(str(midi_path))
+
+        midi_to_json(midi_path, output_dir / midi_path.with_suffix(".json").name)
+
+    # For now, don't delete the generated midifiles as they might be intresting to listen to.
+    # shutil.rmtree(str(midi_dir))
 
 
 if __name__ == "__main__":
