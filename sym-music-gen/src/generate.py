@@ -53,6 +53,9 @@ def notes_to_score(notes):
     return score
 
 
+# def custom_decoding(model, prompt_tokens: torch.tensor, num_bars: int = 16,
+
+
 def main():
     args = __parse_args()
 
@@ -86,11 +89,11 @@ def main():
                 attention_mask=attention_mask,
                 stopping_criteria=[bar_stopping_criteria],
                 pad_token_id=tokenizer.vocab["PAD_None"],
-                temperature=1.2,
-                top_p=0.95,
+                temperature=1.5,
+                top_p=0.90,
                 do_sample=True,
-                num_beams=5,
-                repetition_penalty=0.7,
+                num_beams=3,
+                repetition_penalty=0.5,
             )
         full_score = tokenizer.decode(output.cpu())
 

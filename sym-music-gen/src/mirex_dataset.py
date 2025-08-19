@@ -99,7 +99,8 @@ class MIREXPreprocessedDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx: int):
         sample = self._ds[idx]
 
-        input_ids = torch.as_tensor(sample["tokens"], dtype=torch.long)
+        input_ids = torch.as_tensor(sample["tokens"], dtype=torch.long)[0:1024]
+        bar_starts = [x for x in sample["bar_starts"] if x < 1024]
 
         if self._max_pitch_offset > 0:
             pitch_tokens = torch.isin(input_ids, self._pitch_tokens)
@@ -118,10 +119,11 @@ class MIREXPreprocessedDataset(torch.utils.data.Dataset):
             input_ids[pitch_tokens] += augment_pitch
 
         attention_mask = torch.ones_like(input_ids, dtype=input_ids.dtype)
+        attention_mask[input_ids == 0] = 0  # Don't attend to pad tokens
         labels = input_ids.clone()
 
-        prompt_bar_end = sample["bar_starts"][self._num_prompt_bars]
-        labels[0:prompt_bar_end] = -100
+        prompt_bar_end = bar_starts[self._num_prompt_bars]
+        # labels[0:prompt_bar_end] = -100
 
         return {
             "input_ids": input_ids,
